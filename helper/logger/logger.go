@@ -8,8 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var appLogger zerolog.Logger
-
 func InitLogger(logLevel string) {
 	level := strings.ToLower(logLevel)
 	switch level {
@@ -29,14 +27,6 @@ func InitLogger(logLevel string) {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
-
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-	appLogger = zerolog.New(consoleWriter).With().Timestamp().Logger() //.Level(level)
-
-	log.Logger = appLogger
-}
-
-func GetLogger() *zerolog.Logger {
-	return &log.Logger
+	log.Logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
 }
