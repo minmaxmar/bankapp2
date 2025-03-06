@@ -23,7 +23,7 @@ type Handlers interface {
 	// DeleteUsersID(params operations.DeleteUsersIDParams) middleware.Responder
 	// GetUsers(params operations.GetUsersParams) middleware.Responder
 
-	GetCardsID(params operations.GetCardsIDParams) middleware.Responder
+	GetCardID(params operations.GetCardsIDParams) middleware.Responder
 	PostCards(params operations.PostCardsParams) middleware.Responder
 	DeleteCardsID(params operations.DeleteCardsIDParams) middleware.Responder
 	GetCards(params operations.GetCardsParams) middleware.Responder
