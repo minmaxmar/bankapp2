@@ -18,17 +18,29 @@ import (
 //
 // swagger:model Card
 type Card struct {
-	// id
-	ID int64 `json:"id,omitempty"`
-	// user ID
-	UserID int64 `json:"UserID,omitempty"`
+
 	// bank ID
 	BankID int64 `json:"BankID,omitempty"`
-	// number
-	Number int64 `json:"Number,omitempty"`
+
 	// create date
 	// Format: date-time
 	CreateDate strfmt.DateTime `json:"CreateDate,omitempty"`
+
+	// expiry date
+	// Format: date
+	ExpiryDate strfmt.Date `json:"ExpiryDate,omitempty"`
+
+	// number
+	Number int64 `json:"Number,omitempty"`
+
+	// total
+	Total int64 `json:"Total,omitempty"`
+
+	// user ID
+	UserID int64 `json:"UserID,omitempty"`
+
+	// id
+	ID int64 `json:"id,omitempty"`
 }
 
 // Validate validates this card
@@ -36,6 +48,10 @@ func (m *Card) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCreateDate(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExpiryDate(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -51,6 +67,18 @@ func (m *Card) validateCreateDate(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("CreateDate", "body", "date-time", m.CreateDate.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Card) validateExpiryDate(formats strfmt.Registry) error {
+	if swag.IsZero(m.ExpiryDate) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("ExpiryDate", "body", "date", m.ExpiryDate.String(), formats); err != nil {
 		return err
 	}
 

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"bankapp2/app/controller"
+	controller "bankapp2/app/controllers"
 	"bankapp2/restapi/operations"
 	"log/slog"
 	"strconv"
@@ -28,25 +28,25 @@ type Handlers interface {
 	DeleteCardsID(params operations.DeleteCardsIDParams) middleware.Responder
 	GetCards(params operations.GetCardsParams) middleware.Responder
 
-	Link(api *operations.CardProjectAPI)
+	Link(api *operations.Bankapp2API)
 }
 
-func New(controller controller.Controller, validator *validator.Validate) Handlers {
+func New(controller controller.Controller, validator *validator.Validate, logger *slog.Logger) Handlers {
 	validate = validator
 	return &handlers{
-		// logger: logger,
+		logger:     logger,
 		controller: controller,
 	}
 }
 
-func (h *handlers) Link(api *operations.CardProjectAPI) {
+func (h *handlers) Link(api *operations.Bankapp2API) {
 	// api.GetUsersHandler = operations.GetUsersHandlerFunc(h.GetUsers)
 	// api.GetUsersIDHandler = operations.GetUsersIDHandlerFunc(h.GetUsersID)
 	// api.PostUsersHandler = operations.PostUsersHandlerFunc(h.PostUsers)
 	// api.DeleteUsersIDHandler = operations.DeleteUsersIDHandlerFunc(h.DeleteUsersID)
 
 	api.GetCardsHandler = operations.GetCardsHandlerFunc(h.GetCards)
-	api.GetCardsIDHandler = operations.GetCardsIDHandlerFunc(h.GetCardsID)
+	api.GetCardsIDHandler = operations.GetCardsIDHandlerFunc(h.GetCardID)
 	api.PostCardsHandler = operations.PostCardsHandlerFunc(h.PostCards)
 	api.DeleteCardsIDHandler = operations.DeleteCardsIDHandlerFunc(h.DeleteCardsID)
 }

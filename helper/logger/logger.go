@@ -1,32 +1,21 @@
 package logger
 
 import (
+	"bankapp2/helper/logger/prettylog"
+	"log/slog"
 	"os"
-	"strings"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
-func InitLogger(logLevel string) {
-	level := strings.ToLower(logLevel)
-	switch level {
-	case "debug":
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case "info":
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case "warn":
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case "error":
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	case "fatal":
-		zerolog.SetGlobalLevel(zerolog.FatalLevel)
-	case "panic":
-		zerolog.SetGlobalLevel(zerolog.PanicLevel)
-	default:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+func NewLogger() *slog.Logger {
+	opts := prettylog.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
 	}
 
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-	log.Logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
+	handler := opts.NewPrettyHandler(os.Stdout)
+	log := slog.New(handler)
+	slog.SetDefault(log)
+
+	return log
 }

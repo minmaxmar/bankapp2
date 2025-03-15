@@ -4,19 +4,19 @@ import (
 	"bankapp2/app/models"
 	"context"
 
-	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
-func (repo *cardRepo) GetCards(ctx context.Context) ([]*models.Card, error) {
+func (repo *cardRepo) GetCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error) {
 
 	var cards []*models.Card
-	if err := repo.db.GetConn().
+	if err := connWithOrNoTx.
 		WithContext(ctx).
 		Raw(getCardsQuery).Scan(&cards).Error; err != nil {
 		return nil, err
 	}
 
-	log.Info().Msgf("Success GET cards from storage\n")
+	repo.logger.Info("Success GET cards from storage")
 
 	return cards, nil
 }

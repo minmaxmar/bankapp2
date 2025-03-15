@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  web:
+    depends_on:
+      - db
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    # command: >
+    #   sh -c "go run main.go -b 0.0.0.0"
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+  migrate:
+    container_name: migrater
+    image: migrate/migrate
+    depends_on:
+      - db
+    volumes:
+      - C:\Users\79170\gopets\bankapp2\migrations:/database
+    command: [ "-path", "/database", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable", "up" ]
+
+
+volumes:
+  postgres-db:

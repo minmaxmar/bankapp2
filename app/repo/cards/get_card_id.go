@@ -3,21 +3,25 @@ package cards_repo
 import (
 	"bankapp2/app/models"
 	"context"
+	"log/slog"
 
-	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
-func (repo *cardRepo) GetCardID(ctx context.Context, id int64) (models.Card, error) {
+func (repo *cardRepo) GetCardID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (models.Card, error) {
 
 	card := models.Card{}
-	err := repo.db.GetConn().WithContext(ctx).Raw(getCardIDQuery,
+	err := connWithOrNoTx.WithContext(ctx).Raw(getCardIDQuery,
 		id,
 	).Scan(&card).Error
 
 	if err != nil {
 		return models.Card{}, err
 	}
-	log.Info().Msgf("Success GET card from storage. ID: %+v\n", card.ID)
+	repo.logger.Info(
+		"Success GET card from storage",
+		slog.Any("ID", card.ID),
+	)
 
 	return card, nil
 }

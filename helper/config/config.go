@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -11,13 +12,14 @@ import (
 type Config struct {
 	LogLevel    string
 	DatabaseURL string
+	ServerPort  int `envconfig:"serverport" required:"true" default:"8080"`
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig() *Config {
 
 	err := godotenv.Load()
 	if err != nil && !os.IsNotExist(err) {
-		log.Printf("Error loading .env file: %v", err)
+		log.Fatal("Error loading .env file: %v", err)
 	}
 
 	dsn := fmt.Sprintf(
@@ -27,14 +29,20 @@ func LoadConfig() (*Config, error) {
 		os.Getenv("DB_NAME"),
 	)
 
+	port, err := strconv.Atoi(os.Getenv("SERVERPORT"))
+	if err != nil {
+		log.Fatalf("Error converting SERVERPORT to int: %v", err)
+	}
+
 	config := &Config{
 		LogLevel:    os.Getenv("LOG_LEVEL"),
 		DatabaseURL: dsn,
+		ServerPort:  port,
 	}
 
 	if config.LogLevel == "" {
 		config.LogLevel = "info"
 	}
 
-	return config, nil
+	return config
 }

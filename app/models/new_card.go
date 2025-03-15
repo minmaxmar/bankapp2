@@ -18,15 +18,26 @@ import (
 //
 // swagger:model NewCard
 type NewCard struct {
+
 	// bank ID
 	BankID int64 `json:"BankID,omitempty" validate:"required"`
-	// user ID
-	UserID int64 `json:"UserID,omitempty" validate:"required"`
-	// number
-	Number int64 `json:"Number,omitempty" validate:"required"`
+
 	// create date
 	// Format: date-time
 	CreateDate strfmt.DateTime `json:"CreateDate,omitempty"`
+
+	// expiry date
+	// Format: date
+	ExpiryDate strfmt.Date `json:"ExpiryDate,omitempty" validate:"required"`
+
+	// number
+	Number int64 `json:"Number,omitempty" validate:"required"`
+
+	// total
+	Total int64 `json:"Total,omitempty"`
+
+	// user ID
+	UserID int64 `json:"UserID,omitempty" validate:"required"`
 }
 
 // Validate validates this new card
@@ -34,6 +45,10 @@ func (m *NewCard) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCreateDate(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExpiryDate(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -49,6 +64,18 @@ func (m *NewCard) validateCreateDate(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("CreateDate", "body", "date-time", m.CreateDate.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *NewCard) validateExpiryDate(formats strfmt.Registry) error {
+	if swag.IsZero(m.ExpiryDate) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("ExpiryDate", "body", "date", m.ExpiryDate.String(), formats); err != nil {
 		return err
 	}
 

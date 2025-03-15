@@ -3,6 +3,7 @@ package handlers
 import (
 	"bankapp2/app/models"
 	"bankapp2/restapi/operations"
+	"log/slog"
 
 	"github.com/rs/zerolog/log"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func (h *handlers) GetCards(params operations.GetCardsParams) middleware.Responder {
-	log.Info().Msgf("Trying to GET cards from storage\n")
+	h.logger.Info("Trying to GET cards from storage\n")
 
 	ctx := params.HTTPRequest.Context()
 	cards, err := h.controller.GetCards(ctx)
@@ -28,7 +29,7 @@ func (h *handlers) GetCards(params operations.GetCardsParams) middleware.Respond
 }
 
 func (h *handlers) GetCardID(params operations.GetCardsIDParams) middleware.Responder {
-	log.Info().Msgf("Trying to GET card from storage, card id: %+v\n", convertI64tStr(params.ID))
+	h.logger.Info("Trying to GET card from storage, card id: " + convertI64tStr(params.ID))
 
 	if params.ID == 0 {
 		return operations.NewGetCardsIDDefault(404).WithPayload(&models.ErrorResponse{
@@ -42,10 +43,11 @@ func (h *handlers) GetCardID(params operations.GetCardsIDParams) middleware.Resp
 	card, err := h.controller.GetCardID(ctx, int64(params.ID))
 
 	if err != nil {
-		log.Error().
-			Err(err).
-			Int("ID:", params.ID). // Use Int(), Float64(), Str(), Interface()  etc. for different types
-			Msg("Failed to GET Card from storage")
+		h.logger.Error(
+			"Failed to GET Card from storage",
+			slog.String("ID", convertI64tStr(params.ID)),
+			slog.String("error", err.Error()),
+		)
 		return operations.NewGetCardsIDDefault(404).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
 				Message: "Failed to GET card from storage, card id: " + convertI64tStr(params.ID) + " " + err.Error(),
@@ -57,9 +59,7 @@ func (h *handlers) GetCardID(params operations.GetCardsIDParams) middleware.Resp
 }
 
 func (h *handlers) DeleteCardsID(params operations.DeleteCardsIDParams) middleware.Responder {
-	log.Info().
-		Int("ID:", params.ID).
-		Msg("Trying to DELETE card from storage")
+	h.logger.Info("Trying to DELETE card from storage, card id: " + convertI64tStr(params.ID))
 
 	if params.ID == 0 {
 		return operations.NewDeleteCardsIDDefault(404).WithPayload(&models.ErrorResponse{
@@ -70,13 +70,14 @@ func (h *handlers) DeleteCardsID(params operations.DeleteCardsIDParams) middlewa
 	}
 
 	ctx := params.HTTPRequest.Context()
-	err := h.controller.DeleteCardID(ctx, int(params.ID))
+	err := h.controller.DeleteCardID(ctx, int64(params.ID))
 
 	if err != nil {
-		log.Error().
-			Err(err).
-			Int("ID:", params.ID).
-			Msg("Failed to DELETE card from storage")
+		h.logger.Error(
+			"Failed to DELETE card from storage",
+			slog.String("ID", convertI64tStr(params.ID)),
+			slog.String("error", err.Error()),
+		)
 		return operations.NewDeleteCardsIDDefault(500).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
 				Message: "Failed to DELETE card from storage, card id: " + convertI64tStr(params.ID) + " " + err.Error(),
@@ -88,16 +89,18 @@ func (h *handlers) DeleteCardsID(params operations.DeleteCardsIDParams) middlewa
 }
 
 func (h *handlers) PostCards(params operations.PostCardsParams) middleware.Responder {
-	log.Info().
-		Interface("card", params.Card). // Use Interface() for complex types
-		Msg("Trying to POST card in storage")
+	h.logger.Info(
+		"Trying to POST card in storage",
+		slog.Any("card", params.Card),
+	)
 
 	err := validate.Struct(params.Card)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Interface("card", params.Card).
-			Msg("Failed to POST card in storage")
+		h.logger.Error(
+			"Failed to POST card in storage",
+			slog.Any("card", params.Card),
+			slog.String("error", err.Error()),
+		)
 		return operations.NewGetCardsIDDefault(500).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
 				Message: "Failed to POST card in storage " + err.Error(),
@@ -109,10 +112,11 @@ func (h *handlers) PostCards(params operations.PostCardsParams) middleware.Respo
 	card, err := h.controller.PostCard(ctx, *params.Card)
 
 	if err != nil {
-		log.Error().
-			Err(err).
-			Interface("card", params.Card).
-			Msg("Failed to POST card in storage")
+		h.logger.Error(
+			"Failed to POST card in storage",
+			slog.Any("card", params.Card),
+			slog.String("error", err.Error()),
+		)
 		return operations.NewGetCardsIDDefault(500).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
 				Message: "Failed to POST card in storage " + err.Error(),
