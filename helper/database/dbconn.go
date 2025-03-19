@@ -1,6 +1,8 @@
 package database
 
 import (
+	"bankapp2/helper/config"
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -12,7 +14,7 @@ import (
 )
 
 type DB interface {
-	NewConn(dsn string, logger *slog.Logger) DB
+	NewConn(config config.Config, logger *slog.Logger) DB
 	GetConn() *gorm.DB
 	BeginTx() *gorm.DB
 	CommitTx(tx *gorm.DB)
@@ -28,7 +30,16 @@ func NewDB() DB {
 	return &db{}
 }
 
-func (d *db) NewConn(dsn string, slogger *slog.Logger) DB {
+func (d *db) NewConn(config config.Config, slogger *slog.Logger) DB {
+
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		config.Database.Host,
+		config.Database.User,
+		config.Database.Password,
+		config.Database.Name,
+		config.Database.Port,
+	)
 
 	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
