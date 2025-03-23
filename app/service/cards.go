@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/google/uuid"
 )
 
 func (s service) GetCardID(ctx context.Context, id int64) (models.Card, error) {
@@ -19,13 +18,22 @@ func (s service) PostCard(ctx context.Context, cardData models.NewCard) (models.
 	tx := s.cardRepo.BeginTransaction()
 	// tx, err := s.cardRepo.BeginTransaction() tx creation error handled where originated
 
-	id, _ := uuid.NewUUID()
+	// id, _ := uuid.NewUUID()
+
+	//TODO: check USER exist!!! throuh userRepo
+	// TODO: bank exists!
+
+	// TODO : to fix "Failed to POST card in storage ERROR: column \"bank_id\" of relation \"cards\" does not exist (SQLSTATE 42703
+	// implement all TODOs above to validate user bank existing and fill in card models with rhis information
+
 	card := models.Card{
-		ID:         int64(id.ID()),
+		// ID:         int64(id.ID()),
 		UserID:     cardData.UserID,
 		BankID:     cardData.BankID,
 		Number:     cardData.Number,
 		CreateDate: strfmt.DateTime(time.Now()),
+		ExpiryDate: cardData.ExpiryDate,
+		Total:      0,
 	}
 	// TODO: here rabbitmq was used.
 	cardReturn, err := s.cardRepo.PostCard(tx, ctx, card) // all queries are executed in the transaction

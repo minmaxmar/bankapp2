@@ -28,7 +28,8 @@ type NewCard struct {
 
 	// expiry date
 	// Format: date
-	ExpiryDate strfmt.Date `json:"ExpiryDate,omitempty" validate:"expiry_date_validator"`
+	// ExpiryDate strfmt.Date `json:"ExpiryDate,omitempty" validate:"expiry_date_validator"`
+	ExpiryDate strfmt.Date `json:"ExpiryDate,omitempty" validate:"required"`
 
 	// number
 	Number int64 `json:"Number,omitempty" validate:"required"`

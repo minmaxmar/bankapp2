@@ -24,15 +24,25 @@ services:
     volumes:
       - postgres-db:/var/lib/postgresql/data
 
-  migrate:
-    container_name: migrater
+  migrateforce:
+    container_name: migrateforce
     image: migrate/migrate
     depends_on:
       - db
     volumes:
       - C:\Users\79170\gopets\bankapp2\migrations:/database
+    command: [ "-path", "/database", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable", "force", "2" ]
+  migrate:
+    container_name: migrater
+    image: migrate/migrate
+    depends_on:
+      - migrateforce
+    volumes:
+      - C:\Users\79170\gopets\bankapp2\migrations:/database
     command: [ "-path", "/database", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable", "up" ]
-
+    # command: >
+    #   sh -c "-path /database -database 'postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable' force 2 && 
+    #                -path /database -database 'postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}?sslmode=disable' up"
 
 volumes:
   postgres-db:

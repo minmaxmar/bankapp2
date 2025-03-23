@@ -7,7 +7,6 @@ import (
 	"bankapp2/helper/config"
 	"bankapp2/helper/database"
 	logger "bankapp2/helper/logger"
-	"bankapp2/helper/validators"
 
 	// users_repo "bankapp2/repo/users"
 	"bankapp2/app/service"
@@ -64,7 +63,7 @@ func (r *RootBootstrapper) RunAPI() error {
 
 func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, db database.DB) {
 	logger := r.Infrastructure.Logger
-	r.Infrastructure.DB = database.NewDB().NewConn(*&r.Config.DatabaseURL, logger)
+	r.Infrastructure.DB = database.NewDB().NewConn(*r.Config, logger)
 	// r.UserRepository = users_repo.NewUserRepo(r.Infrastructure.DB, logger)
 	r.CardRepository = cards_repo.NewCardRepo(r.Infrastructure.DB, logger)
 	// r.RabbitMQ = rabbitmq.NewConn(r.UserRepository, r.CardRepository, *r.Config, logger)
@@ -87,9 +86,9 @@ func (r *RootBootstrapper) registerAPIServer(cfg config.Config) error {
 	r.Validator = validator.New(validator.WithRequiredStructEnabled())
 
 	// register custom validators
-	if err := r.Validator.RegisterValidation("expiry_date_validator", validators.ValidateExpiryDate); err != nil {
-		log.Fatal("Failed to register custom validator: " + err.Error())
-	}
+	// if err := r.Validator.RegisterValidation("expiry_date_validator", validators.ValidateExpiryDate); err != nil {
+	// 	log.Fatal("Failed to register custom validator: " + err.Error())
+	// }
 
 	r.Handlers = handlers.New(r.Controller, r.Validator, logger)
 	r.Handlers.Link(api)

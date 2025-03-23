@@ -2,6 +2,7 @@ package cards_repo
 
 import (
 	"bankapp2/app/models"
+	repoModels "bankapp2/app/repo"
 	"bankapp2/helper/database"
 	"context"
 	"log/slog"
@@ -11,7 +12,7 @@ import (
 
 const (
 	getCardIDQuery    = `select * from cards where id = @cardID`
-	postCardQuery     = `insert into cards (id, userid, bankid, number, created_at) values (@id, @userID, @bankID, @number, @create_date) returning *`
+	postCardQuery     = `insert into cards (id,userid, bankid, card_number, create_date, expire_date, total) values (@id, @userID, @bankID, @number, @create_date, @expire_date, @total) returning *`
 	deleteCardIDQuery = `delete from cards where id = @cardID`
 	getCardsQuery     = `select * from cards`
 )
@@ -53,4 +54,17 @@ func (repo *cardRepo) CommitTransaction(tx *gorm.DB) {
 
 func (repo *cardRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
+}
+
+func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result models.Card) {
+	result = models.Card{
+		ID:         gormModel.ID,
+		Number:     gormModel.CardNumber,
+		ExpiryDate: gormModel.ExpireDate,
+		Total:      gormModel.Total,
+		BankID:     gormModel.BankID,
+		UserID:     gormModel.ClientID,
+		CreateDate: gormModel.CreateDate,
+	}
+	return
 }

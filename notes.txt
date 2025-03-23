@@ -1,0 +1,21 @@
+
+psql -U postgres -d bankapp2
+
+
+
+INSERT INTO users (id,email, first_name, last_name) VALUES (1,'john.doe@example.com', 'John', 'Doe');
+
+
+INSERT INTO banks (id,name) VALUES (1,'SberBank');
+
+
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(50) NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL
+);
+
+
+SELECT * FROM schema_migrations;

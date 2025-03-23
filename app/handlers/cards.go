@@ -97,7 +97,7 @@ func (h *handlers) PostCards(params operations.PostCardsParams) middleware.Respo
 	err := validate.Struct(params.Card)
 	if err != nil {
 		h.logger.Error(
-			"Failed to POST card in storage",
+			"Failed to Validate card",
 			slog.Any("card", params.Card),
 			slog.String("error", err.Error()),
 		)
@@ -113,7 +113,7 @@ func (h *handlers) PostCards(params operations.PostCardsParams) middleware.Respo
 
 	if err != nil {
 		h.logger.Error(
-			"Failed to POST card in storage",
+			"Failed to POST! card in storage",
 			slog.Any("card", params.Card),
 			slog.String("error", err.Error()),
 		)
