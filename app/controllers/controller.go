@@ -14,10 +14,10 @@ type controller struct {
 }
 
 type Controller interface {
-	// GetUserID(ctx context.Context, id int) (models.User, error)
-	// PostUser(ctx context.Context, user models.NewUser) (models.User, error)
-	// DeleteUserID(ctx context.Context, id int) error
-	// GetUsers(ctx context.Context) ([]*models.User, error)
+	GetUserID(ctx context.Context, id int64) (models.User, error)
+	PostUser(ctx context.Context, user models.NewUser) (models.User, error)
+	DeleteUserID(ctx context.Context, id int64) error
+	GetUsers(ctx context.Context) ([]*models.User, error)
 
 	GetCardID(ctx context.Context, id int64) (models.Card, error)
 	PostCard(ctx context.Context, user models.NewCard) (models.Card, error)
