@@ -56,8 +56,8 @@ func (repo *cardRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
 }
 
-func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result models.Card) {
-	result = models.Card{
+func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result *models.Card) {
+	result = &models.Card{
 		ID:         gormModel.ID,
 		Number:     gormModel.CardNumber,
 		ExpiryDate: gormModel.ExpireDate,

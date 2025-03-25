@@ -61,7 +61,7 @@ func (repo *cardRepo) PostCard(connWithOrNoTx *gorm.DB, ctx context.Context, car
 		slog.Any("ID", card.ID),
 	)
 
-	returnModel := repo.modelConv(card)
+	returnModel := *repo.modelConv(card)
 
 	return returnModel, nil
 }
