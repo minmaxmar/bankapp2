@@ -8,7 +8,8 @@ import (
 	"bankapp2/helper/database"
 	logger "bankapp2/helper/logger"
 
-	// users_repo "bankapp2/repo/users"
+	banks_repo "bankapp2/app/repo/banks"
+	users_repo "bankapp2/app/repo/users"
 	"bankapp2/app/service"
 	"bankapp2/restapi"
 	"bankapp2/restapi/operations"
@@ -26,11 +27,12 @@ type RootBootstrapper struct {
 		Server *restapi.Server
 		DB     database.DB
 	}
-	Controller controller.Controller
-	Config     *config.Config
-	Handlers   handlers.Handlers
-	// UserRepository users_repo.UsersRepo
+	Controller     controller.Controller
+	Config         *config.Config
+	Handlers       handlers.Handlers
+	UserRepository users_repo.UsersRepo
 	CardRepository cards_repo.CardsRepo
+	BankRepository banks_repo.BanksRepo
 	Service        service.Service
 
 	Validator *validator.Validate
@@ -64,11 +66,12 @@ func (r *RootBootstrapper) RunAPI() error {
 func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, db database.DB) {
 	logger := r.Infrastructure.Logger
 	r.Infrastructure.DB = database.NewDB().NewConn(*r.Config, logger)
-	// r.UserRepository = users_repo.NewUserRepo(r.Infrastructure.DB, logger)
+	r.UserRepository = users_repo.NewUsersRepo(r.Infrastructure.DB, logger)
 	r.CardRepository = cards_repo.NewCardRepo(r.Infrastructure.DB, logger)
+	r.BankRepository = banks_repo.NewBanksRepo(r.Infrastructure.DB, logger)
 	// r.RabbitMQ = rabbitmq.NewConn(r.UserRepository, r.CardRepository, *r.Config, logger)
 	// go r.RabbitMQ.NewConsumer(ctx)
-	r.Service = service.New(logger, r.CardRepository)
+	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository)
 }
 
 func (r *RootBootstrapper) registerAPIServer(cfg config.Config) error {

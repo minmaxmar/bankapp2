@@ -63,7 +63,7 @@ func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result *models.Card)
 		ExpiryDate: gormModel.ExpireDate,
 		Total:      gormModel.Total,
 		BankID:     gormModel.BankID,
-		UserID:     gormModel.ClientID,
+		UserID:     gormModel.UserID,
 		CreateDate: gormModel.CreateDate,
 	}
 	return

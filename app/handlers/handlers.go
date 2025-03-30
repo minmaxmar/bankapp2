@@ -18,6 +18,11 @@ type handlers struct {
 var validate *validator.Validate
 
 type Handlers interface {
+	GetBanksID(params operations.GetBanksIDParams) middleware.Responder
+	PostBanks(params operations.PostBanksParams) middleware.Responder
+	DeleteBanksID(params operations.DeleteBanksIDParams) middleware.Responder
+	GetBanks(params operations.GetBanksParams) middleware.Responder
+
 	GetUsersID(params operations.GetUsersIDParams) middleware.Responder
 	PostUsers(params operations.PostUsersParams) middleware.Responder
 	DeleteUsersID(params operations.DeleteUsersIDParams) middleware.Responder
@@ -40,6 +45,11 @@ func New(controller controller.Controller, validator *validator.Validate, logger
 }
 
 func (h *handlers) Link(api *operations.Bankapp2API) {
+	api.GetBanksHandler = operations.GetBanksHandlerFunc(h.GetBanks)
+	api.GetBanksIDHandler = operations.GetBanksIDHandlerFunc(h.GetBanksID)
+	api.PostBanksHandler = operations.PostBanksHandlerFunc(h.PostBanks)
+	api.DeleteBanksIDHandler = operations.DeleteBanksIDHandlerFunc(h.DeleteBanksID)
+
 	api.GetUsersHandler = operations.GetUsersHandlerFunc(h.GetUsers)
 	api.GetUsersIDHandler = operations.GetUsersIDHandlerFunc(h.GetUsersID)
 	api.PostUsersHandler = operations.PostUsersHandlerFunc(h.PostUsers)

@@ -44,7 +44,7 @@ func (repo *cardRepo) PostCard(connWithOrNoTx *gorm.DB, ctx context.Context, car
 		ExpireDate: cardData.ExpiryDate,
 		Total:      cardData.Total,
 		BankID:     cardData.BankID,
-		ClientID:   cardData.UserID,
+		UserID:     cardData.UserID,
 	}
 
 	repo.logger.Info(

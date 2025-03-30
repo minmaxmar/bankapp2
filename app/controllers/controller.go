@@ -14,6 +14,11 @@ type controller struct {
 }
 
 type Controller interface {
+	GetBankID(ctx context.Context, id int64) (models.Bank, error)
+	PostBank(ctx context.Context, user models.NewBank) (models.Bank, error)
+	DeleteBankID(ctx context.Context, id int64) error
+	GetBanks(ctx context.Context) ([]*models.Bank, error)
+
 	GetUserID(ctx context.Context, id int64) (models.User, error)
 	PostUser(ctx context.Context, user models.NewUser) (models.User, error)
 	DeleteUserID(ctx context.Context, id int64) error

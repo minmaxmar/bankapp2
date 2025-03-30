@@ -49,7 +49,7 @@ func (repo *usersRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
 }
 
-func (repo *usersRepo) modelConv(gormModel repoModels.Client) (result *models.User) {
+func (repo *usersRepo) modelConv(gormModel repoModels.User) (result *models.User) {
 	result = &models.User{
 		ID:        gormModel.ID,
 		FirstName: gormModel.FirstName,
@@ -61,7 +61,7 @@ func (repo *usersRepo) modelConv(gormModel repoModels.Client) (result *models.Us
 
 func (repo *usersRepo) DeleteUserID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (int64, error) {
 
-	user := repoModels.Client{ID: id}
+	user := repoModels.User{ID: id}
 	result := connWithOrNoTx.WithContext(ctx).Delete(&user)
 
 	if result.Error != nil {
@@ -73,7 +73,7 @@ func (repo *usersRepo) DeleteUserID(connWithOrNoTx *gorm.DB, ctx context.Context
 
 func (repo *usersRepo) GetUserID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (models.User, error) {
 
-	user := repoModels.Client{}
+	user := repoModels.User{}
 
 	err := connWithOrNoTx.WithContext(ctx).First(&user, id).Error
 
@@ -93,7 +93,7 @@ func (repo *usersRepo) GetUserID(connWithOrNoTx *gorm.DB, ctx context.Context, i
 
 func (repo *usersRepo) GetUsers(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.User, error) {
 
-	var users []*repoModels.Client
+	var users []*repoModels.User
 	if err := connWithOrNoTx.WithContext(ctx).Find(&users).Error; err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (repo *usersRepo) GetUsers(connWithOrNoTx *gorm.DB, ctx context.Context) ([
 
 func (repo *usersRepo) PostUser(connWithOrNoTx *gorm.DB, ctx context.Context, userData models.User) (models.User, error) {
 
-	user := repoModels.Client{
+	user := repoModels.User{
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     userData.Email,

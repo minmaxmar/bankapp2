@@ -10,7 +10,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-func (h *handlers) GetUsers(params operations.GetCardsParams) middleware.Responder {
+func (h *handlers) GetUsers(params operations.GetUsersParams) middleware.Responder {
 	h.logger.Info("Trying to GET users from storage\n")
 
 	ctx := params.HTTPRequest.Context()
@@ -28,7 +28,7 @@ func (h *handlers) GetUsers(params operations.GetCardsParams) middleware.Respond
 	return operations.NewGetUsersOK().WithPayload(users)
 }
 
-func (h *handlers) GetUsersID(params operations.GetCardsIDParams) middleware.Responder {
+func (h *handlers) GetUsersID(params operations.GetUsersIDParams) middleware.Responder {
 	h.logger.Info("Trying to GET user from storage, user id: " + convertI64tStr(params.ID))
 
 	if params.ID == 0 {
@@ -48,9 +48,9 @@ func (h *handlers) GetUsersID(params operations.GetCardsIDParams) middleware.Res
 			slog.String("ID", convertI64tStr(params.ID)),
 			slog.String("error", err.Error()),
 		)
-		return operations.NewGetCardsIDDefault(404).WithPayload(&models.ErrorResponse{
+		return operations.NewGetUsersIDDefault(404).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
-				Message: "Failed to GET user from storage, card id: " + convertI64tStr(params.ID) + " " + err.Error(),
+				Message: "Failed to GET user from storage, user id: " + convertI64tStr(params.ID) + " " + err.Error(),
 			},
 		})
 	}
@@ -58,7 +58,7 @@ func (h *handlers) GetUsersID(params operations.GetCardsIDParams) middleware.Res
 	return operations.NewGetUsersIDOK().WithPayload(&user)
 }
 
-func (h *handlers) DeleteUsersID(params operations.DeleteCardsIDParams) middleware.Responder {
+func (h *handlers) DeleteUsersID(params operations.DeleteUsersIDParams) middleware.Responder {
 	h.logger.Info("Trying to DELETE user from storage, user id: " + convertI64tStr(params.ID))
 
 	if params.ID == 0 {
@@ -80,7 +80,7 @@ func (h *handlers) DeleteUsersID(params operations.DeleteCardsIDParams) middlewa
 		)
 		return operations.NewDeleteUsersIDDefault(500).WithPayload(&models.ErrorResponse{
 			Error: &models.ErrorResponseAO0Error{
-				Message: "Failed to DELETE user from storage, card id: " + convertI64tStr(params.ID) + " " + err.Error(),
+				Message: "Failed to DELETE user from storage, user id: " + convertI64tStr(params.ID) + " " + err.Error(),
 			},
 		})
 	}

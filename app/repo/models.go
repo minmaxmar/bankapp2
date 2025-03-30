@@ -12,22 +12,22 @@ type Card struct {
 	Total      int64           `json:"total" gorm:"type:numeric;not null;default:0"`
 	BankID     int64           `json:"bankid" gorm:"not null"`
 	Bank       Bank            `json:"bank" gorm:"foreignKey:BankID"`
-	ClientID   int64           `json:"clientid" gorm:"not null"`
-	Client     Client          `json:"client" gorm:"foreignKey:ClientID"`
+	UserID     int64           `json:"userid" gorm:"not null"`
+	User       User            `json:"user" gorm:"foreignKey:UserID"`
 }
 
-type Client struct {
+type User struct {
 	ID        int64  `json:"id" gorm:"primaryKey;autoIncrement;type:bigserial"`
 	FirstName string `json:"first_name" gorm:"type:varchar(50);not null"`
 	LastName  string `json:"last_name" gorm:"type:varchar(50);not null"`
 	Email     string `json:"email" gorm:"type:varchar(50);unique;not null"`
-	Banks     []Bank `gorm:"many2many:bank_clients;"`
-	Cards     []Card `gorm:"foreignKey:ClientID"`
+	Banks     []Bank `gorm:"many2many:bank_users;"`
+	Cards     []Card `gorm:"foreignKey:UserID"`
 }
 
 type Bank struct {
-	ID      int64    `json:"id" gorm:"primaryKey;autoIncrement;type:bigserial"`
-	Name    string   `json:"name" gorm:"type:varchar(50);not null"`
-	Clients []Client `gorm:"many2many:bank_clients;"`
-	Cards   []Card   `gorm:"foreignKey:BankID"`
+	ID    int64  `json:"id" gorm:"primaryKey;autoIncrement;type:bigserial"`
+	Name  string `json:"name" gorm:"type:varchar(50);not null"`
+	Users []User `gorm:"many2many:bank_usess;"`
+	Cards []Card `gorm:"foreignKey:BankID"`
 }

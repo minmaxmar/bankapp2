@@ -6,6 +6,7 @@ import (
 	cards_repo "bankapp2/app/repo/cards"
 	"log/slog"
 
+	banks_repo "bankapp2/app/repo/banks"
 	users_repo "bankapp2/app/repo/users"
 	"context"
 )
@@ -14,6 +15,7 @@ type service struct {
 	logger *slog.Logger
 
 	userRepo users_repo.UsersRepo
+	bankRepo banks_repo.BanksRepo
 	cardRepo cards_repo.CardsRepo
 }
 
@@ -29,17 +31,22 @@ type Service interface {
 	GetCards(ctx context.Context) ([]*models.Card, error)
 
 	// StartTransaction(ctx context.Context) (*sql.Tx, error)
+
+	GetBankID(ctx context.Context, id int64) (models.Bank, error)
+	PostBank(ctx context.Context, user models.NewBank) (models.Bank, error)
+	DeleteBankID(ctx context.Context, id int64) error
+	GetBanks(ctx context.Context) ([]*models.Bank, error)
 }
 
 func New(
 	logger *slog.Logger,
 	userRepo users_repo.UsersRepo,
-	cardRepo cards_repo.CardsRepo) Service {
+	cardRepo cards_repo.CardsRepo,
+	bankRepo banks_repo.BanksRepo) Service {
 	return &service{
-
-		logger: logger,
-
+		logger:   logger,
 		userRepo: userRepo,
 		cardRepo: cardRepo,
+		bankRepo: bankRepo,
 	}
 }
