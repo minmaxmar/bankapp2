@@ -3,6 +3,7 @@ package service
 import (
 	"bankapp2/app/models"
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -16,18 +17,23 @@ func (s service) GetCardID(ctx context.Context, id int64) (models.Card, error) {
 func (s service) PostCard(ctx context.Context, cardData models.NewCard) (models.Card, error) {
 
 	tx := s.cardRepo.BeginTransaction()
-	// tx, err := s.cardRepo.BeginTransaction() tx creation error handled where originated
+	if _, err := s.bankRepo.GetBankID(tx, ctx, cardData.BankID); err != nil {
+		s.logger.Error(
+			"Error fetching bank ID:",
+			slog.Any("ID", cardData.BankID),
+		)
+		return models.Card{}, err
+	}
 
-	// id, _ := uuid.NewUUID()
-
-	//TODO: check USER exist!!! throuh userRepo
-	// TODO: bank exists!
-
-	// TODO : to fix "Failed to POST card in storage ERROR: column \"bank_id\" of relation \"cards\" does not exist (SQLSTATE 42703
-	// implement all TODOs above to validate user bank existing and fill in card models with rhis information
+	if _, err := s.userRepo.GetUserID(tx, ctx, cardData.UserID); err != nil {
+		s.logger.Error(
+			"Error fetching user ID:",
+			slog.Any("ID", cardData.UserID),
+		)
+		return models.Card{}, err
+	}
 
 	card := models.Card{
-		// ID:         int64(id.ID()),
 		UserID:     cardData.UserID,
 		BankID:     cardData.BankID,
 		Number:     cardData.Number,
@@ -35,8 +41,7 @@ func (s service) PostCard(ctx context.Context, cardData models.NewCard) (models.
 		ExpiryDate: cardData.ExpiryDate,
 		Total:      0,
 	}
-	// TODO: here rabbitmq was used.
-	cardReturn, err := s.cardRepo.PostCard(tx, ctx, card) // all queries are executed in the transaction
+	cardReturn, err := s.cardRepo.PostCard(tx, ctx, card)
 
 	if err != nil {
 		return models.Card{}, err

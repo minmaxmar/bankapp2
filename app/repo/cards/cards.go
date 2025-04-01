@@ -6,7 +6,9 @@ import (
 	"bankapp2/helper/database"
 	"context"
 	"log/slog"
+	"time"
 
+	"github.com/go-openapi/strfmt"
 	"gorm.io/gorm"
 )
 
@@ -27,6 +29,7 @@ type CardsRepo interface {
 	PostCard(connWithOrNoTx *gorm.DB, ctx context.Context, card models.Card) (models.Card, error)
 	DeleteCardID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (int64, error)
 	GetCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error)
+	GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error)
 	BeginTransaction() *gorm.DB
 	CommitTransaction(tx *gorm.DB)
 	RollbackTransaction(tx *gorm.DB)
@@ -67,4 +70,23 @@ func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result *models.Card)
 		CreateDate: gormModel.CreateDate,
 	}
 	return
+}
+
+func (repo *cardRepo) GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error) {
+
+	currentTime := strfmt.DateTime(time.Now())
+
+	var cards []*repoModels.Card
+	if err := connWithOrNoTx.WithContext(ctx).Where("expire_date < ?", currentTime).Find(&cards).Error; err != nil {
+		return nil, err
+	}
+	repo.logger.Info("Success GET expired cards from storage")
+
+	returnModels := make([]*models.Card, len(cards))
+	for i, card := range cards {
+		returnModels[i] = repo.modelConv(*card)
+	}
+
+	return returnModels, nil
+
 }

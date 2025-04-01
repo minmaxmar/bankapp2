@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"bankapp2/app/models"
 	"bankapp2/helper/config"
 	"context"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/go-stack/stack"
+	"gorm.io/gorm"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -26,8 +28,9 @@ type kafkaProducer struct {
 }
 
 type cardRepo interface {
+	GetConn() *gorm.DB
 	DeleteCardID(ctx context.Context, id int) (int64, error)
-	GetExpiredCards(ctx context.Context) (int64, error) // TODO: implement in cards repo
+	GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error) // TODO: implement in cards repo
 }
 
 type Kafka interface {
@@ -57,20 +60,25 @@ func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka
 }
 
 func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
-	// TODO: select from card where expire_date >= now
-	// k.cardRepo.GetExpiredCards()
-	id := 1
-	message := fmt.Sprintf("%d", id) // serialize message
-	err := k.producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: topicDeleteCard, Partition: kafka.PartitionAny},
-		Value:          []byte(message),
-	}, nil)
-
+	cards, err := k.cardRepo.GetExpiredCards(k.cardRepo.GetConn(), ctx)
 	if err != nil {
-		k.logger.Error("Failed to produce message", "error", err)
-		return err
+		k.logger.Error("Failed while getting expired cards",
+			"error", err,
+			"stacktrace", stack.Trace().String())
 	}
+	for _, card := range cards {
+		message := fmt.Sprintf("%d", card.ID) // serialize message
+		err := k.producer.Produce(&kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: topicDeleteCard, Partition: kafka.PartitionAny},
+			Value:          []byte(message),
+		}, nil)
 
+		if err != nil {
+			k.logger.Error("Failed to produce message", "error", err)
+			return err
+		}
+
+	}
 	k.producer.Flush(1000)
 	return nil
 }
@@ -112,7 +120,8 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 }
 
 func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *kafka.Message) {
-	cardID := string(msg.Value)
+	cardID := int64(msg.Value)
 	k.logger.Info("Received message to delete card ID: %s\n", cardID)
-	// convert cardID to an integer and k.cardRepo.DeleteCardID
+	del, err := k.cardRepo.DeleteCardID(ctx, cardID)
+	// TODO: return deleted and err
 }
