@@ -29,15 +29,18 @@ type kafkaProducer struct {
 
 type cardRepo interface {
 	GetConn() *gorm.DB
-	DeleteCardID(ctx context.Context, id int) (int64, error)
-	GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error) // TODO: implement in cards repo
+	BeginTransaction() *gorm.DB
+	CommitTransaction(tx *gorm.DB)
+	RollbackTransaction(tx *gorm.DB)
+	DeleteCardID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (int64, error)
+	GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error)
 }
 
 type Kafka interface {
 	// ProduceDeleteCard(ctx context.Context, id int) error
 	ProduceDeleteExpiredCards(ctx context.Context) error
 	NewConsumer(ctx context.Context, config config.Config)
-	ConsumeCardDelete(ctx context.Context, msg *kafka.Message)
+	ConsumeCardDelete(ctx context.Context, msg *kafka.Message) (int64, error)
 }
 
 func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka {
@@ -111,7 +114,11 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 		for {
 			msg, err := consumer.ReadMessage(-1)
 			if err == nil {
-				k.ConsumeCardDelete(ctx, msg)
+				if deletedID, err := k.ConsumeCardDelete(ctx, msg); err != nil {
+					k.logger.Error("Error while trying to delete", "cardID", msg.Value, "error", err)
+				} else {
+					k.logger.Info("Successfully deleted card ID", "deletedID", deletedID)
+				}
 			} else {
 				k.logger.Error("Error while consuming message", "error", err)
 			}
@@ -119,9 +126,17 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 	}()
 }
 
-func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *kafka.Message) {
+func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *kafka.Message) (int64, error) {
 	cardID := int64(msg.Value)
 	k.logger.Info("Received message to delete card ID: %s\n", cardID)
-	del, err := k.cardRepo.DeleteCardID(ctx, cardID)
-	// TODO: return deleted and err
+	tx := k.cardRepo.BeginTransaction()
+	deletedID, err := k.cardRepo.DeleteCardID(tx, ctx, cardID)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+	return deletedID, err
 }

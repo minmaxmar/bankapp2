@@ -9,6 +9,7 @@ import (
 	logger "bankapp2/helper/logger"
 
 	banks_repo "bankapp2/app/repo/banks"
+	"bankapp2/app/repo/kafka"
 	users_repo "bankapp2/app/repo/users"
 	"bankapp2/app/service"
 	"bankapp2/restapi"
@@ -33,6 +34,7 @@ type RootBootstrapper struct {
 	UserRepository users_repo.UsersRepo
 	CardRepository cards_repo.CardsRepo
 	BankRepository banks_repo.BanksRepo
+	Kafka          kafka.Kafka
 	Service        service.Service
 
 	Validator *validator.Validate
@@ -69,8 +71,12 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	r.UserRepository = users_repo.NewUsersRepo(r.Infrastructure.DB, logger)
 	r.CardRepository = cards_repo.NewCardRepo(r.Infrastructure.DB, logger)
 	r.BankRepository = banks_repo.NewBanksRepo(r.Infrastructure.DB, logger)
-	// r.RabbitMQ = rabbitmq.NewConn(r.UserRepository, r.CardRepository, *r.Config, logger)
-	// go r.RabbitMQ.NewConsumer(ctx)
+
+	// TODO: consumer - cron, producer - goroutine with ticker
+	r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
+	go r.Kafka.NewConsumer(ctx, *r.Config)
+	r.Kafka.ProduceDeleteExpiredCards(ctx)
+
 	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository)
 }
 
