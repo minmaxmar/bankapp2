@@ -127,6 +127,7 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 }
 
 func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *kafka.Message) (int64, error) {
+	k.logger.Info("Producer started")
 	cardID := int64(msg.Value)
 	k.logger.Info("Received message to delete card ID: %s\n", cardID)
 	tx := k.cardRepo.BeginTransaction()

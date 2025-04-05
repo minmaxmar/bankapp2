@@ -9,7 +9,6 @@ import (
 	logger "bankapp2/helper/logger"
 
 	banks_repo "bankapp2/app/repo/banks"
-	"bankapp2/app/repo/kafka"
 	users_repo "bankapp2/app/repo/users"
 	"bankapp2/app/service"
 	"bankapp2/restapi"
@@ -34,8 +33,8 @@ type RootBootstrapper struct {
 	UserRepository users_repo.UsersRepo
 	CardRepository cards_repo.CardsRepo
 	BankRepository banks_repo.BanksRepo
-	Kafka          kafka.Kafka
-	Service        service.Service
+	// Kafka          kafka.Kafka
+	Service service.Service
 
 	Validator *validator.Validate
 }
@@ -53,7 +52,8 @@ func New() RootBoot {
 }
 
 func (r *RootBootstrapper) RunAPI() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	r.Infrastructure.Logger = logger.NewLogger()
 
 	r.registerRepositoriesAndServices(ctx, r.Infrastructure.DB)
@@ -61,6 +61,9 @@ func (r *RootBootstrapper) RunAPI() error {
 	if err != nil {
 		log.Fatal("cant start server")
 	}
+
+	<-ctx.Done()
+	log.Println("Exited cleanly.")
 
 	return nil
 }
@@ -72,12 +75,35 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	r.CardRepository = cards_repo.NewCardRepo(r.Infrastructure.DB, logger)
 	r.BankRepository = banks_repo.NewBanksRepo(r.Infrastructure.DB, logger)
 
-	// TODO: consumer - cron, producer - goroutine with ticker
-	r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
-	go r.Kafka.NewConsumer(ctx, *r.Config)
-	r.Kafka.ProduceDeleteExpiredCards(ctx)
+	//consumer - cron, producer - goroutine with ticker
+	// r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
 
-	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository)
+	// c := cron.New()
+	// _, err := c.AddFunc("@every 2m", func() {
+	// 	r.Kafka.NewConsumer(ctx, *r.Config)
+	// })
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// c.Start()
+	// defer c.Stop()
+
+	// ticker := time.NewTicker(1 * time.Minute)
+	// defer ticker.Stop()
+
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case <-ticker.C:
+	// 			r.Kafka.ProduceDeleteExpiredCards(ctx)
+	// 		case <-ctx.Done():
+	// 			log.Println("Shutting down ProduceDeleteExpiredCards goroutine.")
+	// 			return
+	// 		}
+	// 	}
+	// }()
+	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository) //  r.Kafka
+
 }
 
 func (r *RootBootstrapper) registerAPIServer(cfg config.Config) error {

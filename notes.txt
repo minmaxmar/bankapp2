@@ -26,3 +26,41 @@ FROM pg_stat_activity
 WHERE datname = 'bankapp2' AND pid <> pg_backend_pid();
 DROP DATABASE bankapp2;
 CREATE DATABASE bankapp2;
+
+
+
+kafka-topics.sh --create --topic delete_card --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+kafka-topics.sh --list --bootstrap-server localhost:9092
+
+
+/////////////////////////////
+
+# create-topics.sh
+#!/bin/bash
+
+# Wait until Kafka is available
+cub kafka-ready -b localhost:9092 1 20
+
+# Create the topic
+kafka-topics.sh --create --topic my_new_topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+
+chmod +x create-topics.sh
+
+
+volumes:
+      - ./create-topics.sh:/create-topics.sh  # Mount the script
+    command: ["/bin/bash", "-c", "/create-topics.sh"]  # Execute the script
+
+
+
+#!/bin/bash
+
+# Wait until Kafka is available
+while ! nc -z localhost 9092; do
+  echo "Waiting for Kafka to be ready..."
+  sleep 2
+done
+
+# Create the topic
+kafka-topics.sh --create --topic my_new_topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 --if-not-exists

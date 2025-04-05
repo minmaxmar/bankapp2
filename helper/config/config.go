@@ -22,10 +22,7 @@ type Database struct {
 }
 
 type Kafka struct {
-	User             string `envconfig:"user" required:"true"`
-	Password         string `envconfig:"password" required:"true"`
 	BootstrapServers string `envconfig:"bootstrapservers" required:"true"`
-	Port             string `envconfig:"port" required:"true"`
 }
 
 func LoadConfig() *Config {

@@ -17,6 +17,8 @@ type service struct {
 	userRepo users_repo.UsersRepo
 	bankRepo banks_repo.BanksRepo
 	cardRepo cards_repo.CardsRepo
+
+	// kafka kafka.Kafka
 }
 
 type Service interface {
@@ -42,11 +44,14 @@ func New(
 	logger *slog.Logger,
 	userRepo users_repo.UsersRepo,
 	cardRepo cards_repo.CardsRepo,
-	bankRepo banks_repo.BanksRepo) Service {
+	bankRepo banks_repo.BanksRepo,
+	// kafka kafka.Kafka
+) Service {
 	return &service{
 		logger:   logger,
 		userRepo: userRepo,
 		cardRepo: cardRepo,
 		bankRepo: bankRepo,
+		// kafka:    kafka,
 	}
 }
