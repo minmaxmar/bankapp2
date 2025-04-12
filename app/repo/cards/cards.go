@@ -12,13 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	getCardIDQuery    = `select * from cards where id = @cardID`
-	postCardQuery     = `insert into cards (id,userid, bankid, card_number, create_date, expire_date, total) values (@id, @userID, @bankID, @number, @create_date, @expire_date, @total) returning *`
-	deleteCardIDQuery = `delete from cards where id = @cardID`
-	getCardsQuery     = `select * from cards`
-)
-
 type cardRepo struct {
 	db     database.DB
 	logger *slog.Logger
@@ -59,8 +52,8 @@ func (repo *cardRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
 }
 
-func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result *models.Card) {
-	result = &models.Card{
+func (repo *cardRepo) convertModel(gormModel repoModels.Card) *models.Card {
+	return &models.Card{
 		ID:         gormModel.ID,
 		Number:     gormModel.CardNumber,
 		ExpiryDate: gormModel.ExpireDate,
@@ -69,7 +62,6 @@ func (repo *cardRepo) modelConv(gormModel repoModels.Card) (result *models.Card)
 		UserID:     gormModel.UserID,
 		CreateDate: gormModel.CreateDate,
 	}
-	return
 }
 
 func (repo *cardRepo) GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Card, error) {
@@ -84,7 +76,7 @@ func (repo *cardRepo) GetExpiredCards(connWithOrNoTx *gorm.DB, ctx context.Conte
 
 	returnModels := make([]*models.Card, len(cards))
 	for i, card := range cards {
-		returnModels[i] = repo.modelConv(*card)
+		returnModels[i] = repo.convertModel(*card)
 	}
 
 	return returnModels, nil

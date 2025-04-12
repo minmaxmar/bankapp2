@@ -17,7 +17,7 @@ func (repo *cardRepo) GetCards(connWithOrNoTx *gorm.DB, ctx context.Context) ([]
 
 	returnModels := make([]*models.Card, len(cards))
 	for i, card := range cards {
-		returnModels[i] = repo.modelConv(*card)
+		returnModels[i] = repo.convertModel(*card)
 	}
 
 	return returnModels, nil

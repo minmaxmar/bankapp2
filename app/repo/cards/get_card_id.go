@@ -2,6 +2,7 @@ package cards_repo
 
 import (
 	"bankapp2/app/models"
+	repoModels "bankapp2/app/repo"
 	"context"
 	"log/slog"
 
@@ -10,10 +11,8 @@ import (
 
 func (repo *cardRepo) GetCardID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (models.Card, error) {
 
-	card := models.Card{}
-	err := connWithOrNoTx.WithContext(ctx).Raw(getCardIDQuery,
-		id,
-	).Scan(&card).Error
+	card := repoModels.Card{}
+	err := connWithOrNoTx.WithContext(ctx).First(&card, id).Error
 
 	if err != nil {
 		return models.Card{}, err
@@ -23,5 +22,5 @@ func (repo *cardRepo) GetCardID(connWithOrNoTx *gorm.DB, ctx context.Context, id
 		slog.Any("ID", card.ID),
 	)
 
-	return card, nil
+	return *repo.convertModel(card), nil
 }

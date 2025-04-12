@@ -49,14 +49,13 @@ func (repo *usersRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
 }
 
-func (repo *usersRepo) modelConv(gormModel repoModels.User) (result *models.User) {
-	result = &models.User{
+func (repo *usersRepo) convertModel(gormModel repoModels.User) (result *models.User) {
+	return &models.User{
 		ID:        gormModel.ID,
 		FirstName: gormModel.FirstName,
 		LastName:  gormModel.LastName,
 		Email:     gormModel.Email,
 	}
-	return
 }
 
 func (repo *usersRepo) DeleteUserID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (int64, error) {
@@ -86,9 +85,7 @@ func (repo *usersRepo) GetUserID(connWithOrNoTx *gorm.DB, ctx context.Context, i
 		slog.Any("ID", user.ID),
 	)
 
-	returnModel := *repo.modelConv(user)
-
-	return returnModel, nil
+	return *repo.convertModel(user), nil
 }
 
 func (repo *usersRepo) GetUsers(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.User, error) {
@@ -102,7 +99,7 @@ func (repo *usersRepo) GetUsers(connWithOrNoTx *gorm.DB, ctx context.Context) ([
 
 	returnModels := make([]*models.User, len(users))
 	for i, user := range users {
-		returnModels[i] = repo.modelConv(*user)
+		returnModels[i] = repo.convertModel(*user)
 	}
 
 	return returnModels, nil
@@ -116,11 +113,6 @@ func (repo *usersRepo) PostUser(connWithOrNoTx *gorm.DB, ctx context.Context, us
 		Email:     userData.Email,
 	}
 
-	repo.logger.Info(
-		"TRYYYYYYYYYING!",
-		slog.Any("user", user),
-	)
-
 	if err := connWithOrNoTx.WithContext(ctx).Create(&user).Error; err != nil {
 		return models.User{}, err
 	}
@@ -130,7 +122,5 @@ func (repo *usersRepo) PostUser(connWithOrNoTx *gorm.DB, ctx context.Context, us
 		slog.Any("ID", user.ID),
 	)
 
-	returnModel := *repo.modelConv(user)
-
-	return returnModel, nil
+	return *repo.convertModel(user), nil
 }

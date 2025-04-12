@@ -80,14 +80,21 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	r.BankRepository = banks_repo.NewBanksRepo(r.Infrastructure.DB, logger)
 
 	// consumer - cron, producer - goroutine with ticker
-	r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
-
-	c := cron.New()
-	_, err := c.AddFunc("@every 2m", func() {
-		r.Kafka.NewConsumer(ctx, *r.Config)
-	})
+	kp, err := kafka.NewConn(r.CardRepository, *r.Config, logger)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("cant start kafka producer")
+	}
+	r.Kafka = kp
+
+	// TODO: is this error-catch OK????
+	c := cron.New()
+	_, er := c.AddFunc("@every 2m", func() {
+		if err := r.Kafka.NewConsumer(ctx, *r.Config); err != nil {
+			log.Fatal(err)
+		}
+	})
+	if er != nil {
+		log.Fatal(er)
 	}
 	c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
 	c.Start()

@@ -4,8 +4,6 @@ import (
 	"bankapp2/app/models"
 	"bankapp2/helper/config"
 	"context"
-	"fmt"
-	"os"
 	"strconv"
 
 	"log/slog"
@@ -38,11 +36,11 @@ type cardRepo interface {
 type Kafka interface {
 	// ProduceDeleteCard(ctx context.Context, id int) error
 	ProduceDeleteExpiredCards(ctx context.Context) error
-	NewConsumer(ctx context.Context, config config.Config)
+	NewConsumer(ctx context.Context, config config.Config) error
 	ConsumeCardDelete(ctx context.Context, msg *sarama.ConsumerMessage) (int64, error)
 }
 
-func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka {
+func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) (Kafka, error) {
 	configSarama := sarama.NewConfig()
 	configSarama.Producer.Return.Successes = true
 	producer, err := sarama.NewSyncProducer([]string{config.Kafka.BootstrapServers}, configSarama)
@@ -50,7 +48,7 @@ func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka
 		logger.Error("Unable to create Kafka producer",
 			"error", err,
 			"stacktrace", stack.Trace().String())
-		os.Exit(1)
+		return &kafkaProducer{}, err
 	}
 
 	logger.Info("New Kafka connection opened")
@@ -58,7 +56,7 @@ func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka
 		logger:   logger,
 		producer: producer,
 		cardRepo: cardRepo,
-	}
+	}, nil
 }
 
 func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
@@ -71,7 +69,7 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 		return err
 	}
 	for _, card := range cards {
-		message := fmt.Sprintf("%d", card.ID) // serialize message
+		message := strconv.Itoa(int(card.ID)) // serialize message
 		_, _, err := k.producer.SendMessage(&sarama.ProducerMessage{
 			Topic: topicDeleteCard,
 			Value: sarama.StringEncoder(message),
@@ -87,13 +85,13 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 
 // TODO: !!! all consumers created get no closed after NewConsumer exists!!!!
 // TODO: !!! better to create 1 consumer like producer sarama.SyncProducer ???
-func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
+func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) error {
 	consumer, err := sarama.NewConsumer([]string{config.Kafka.BootstrapServers}, nil)
 	if err != nil {
 		k.logger.Error("Unable to create Kafka consumer",
 			"error", err,
 			"stacktrace", stack.Trace().String())
-		os.Exit(1)
+		return err
 	}
 	defer consumer.Close()
 	k.logger.Info("Consumer started")
@@ -104,7 +102,7 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 			"topic", topicDeleteCard,
 			"error", err,
 			"stacktrace", stack.Trace().String())
-		os.Exit(1)
+		return err
 	}
 
 	for _, partition := range partitions {
@@ -123,6 +121,7 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 		for msg := range partitionConsumer.Messages() {
 			if deletedID, err := k.ConsumeCardDelete(ctx, msg); err != nil {
 				k.logger.Error("Error while trying to delete", "cardID", msg.Value, "error", err)
+				return err
 			} else {
 				k.logger.Info("Successfully deleted card ID", "deletedID", deletedID)
 			}

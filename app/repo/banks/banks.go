@@ -49,12 +49,11 @@ func (repo *banksRepo) RollbackTransaction(tx *gorm.DB) {
 	repo.db.RollbackTx(tx)
 }
 
-func (repo *banksRepo) modelConv(gormModel repoModels.Bank) (result *models.Bank) {
-	result = &models.Bank{
+func (repo *banksRepo) convertModel(gormModel repoModels.Bank) *models.Bank {
+	return &models.Bank{
 		ID:   gormModel.ID,
 		Name: gormModel.Name,
 	}
-	return
 }
 
 func (repo *banksRepo) DeleteBankID(connWithOrNoTx *gorm.DB, ctx context.Context, id int64) (int64, error) {
@@ -84,9 +83,7 @@ func (repo *banksRepo) GetBankID(connWithOrNoTx *gorm.DB, ctx context.Context, i
 		slog.Any("ID", bank.ID),
 	)
 
-	returnModel := *repo.modelConv(bank)
-
-	return returnModel, nil
+	return *repo.convertModel(bank), nil
 }
 
 func (repo *banksRepo) GetBanks(connWithOrNoTx *gorm.DB, ctx context.Context) ([]*models.Bank, error) {
@@ -100,7 +97,7 @@ func (repo *banksRepo) GetBanks(connWithOrNoTx *gorm.DB, ctx context.Context) ([
 
 	returnModels := make([]*models.Bank, len(banks))
 	for i, bank := range banks {
-		returnModels[i] = repo.modelConv(*bank)
+		returnModels[i] = repo.convertModel(*bank)
 	}
 
 	return returnModels, nil
@@ -126,7 +123,5 @@ func (repo *banksRepo) PostBank(connWithOrNoTx *gorm.DB, ctx context.Context, ba
 		slog.Any("ID", bank.ID),
 	)
 
-	returnModel := *repo.modelConv(bank)
-
-	return returnModel, nil
+	return *repo.convertModel(bank), nil
 }
