@@ -1,4 +1,4 @@
-package kafka
+package main
 
 import (
 	"bankapp2/app/models"
@@ -6,23 +6,24 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"log/slog"
 
 	"github.com/go-stack/stack"
 	"gorm.io/gorm"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	ka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-const (
+var (
 	topicDeleteCard string = "delete_card"
 )
 
 type kafkaProducer struct {
 	logger *slog.Logger
 
-	producer *kafka.Producer
+	producer *ka.Producer
 
 	cardRepo cardRepo
 }
@@ -40,11 +41,11 @@ type Kafka interface {
 	// ProduceDeleteCard(ctx context.Context, id int) error
 	ProduceDeleteExpiredCards(ctx context.Context) error
 	NewConsumer(ctx context.Context, config config.Config)
-	ConsumeCardDelete(ctx context.Context, msg *kafka.Message) (int64, error)
+	ConsumeCardDelete(ctx context.Context, msg *ka.Message) (int64, error)
 }
 
 func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) Kafka {
-	producer, err := kafka.NewProducer(&kafka.ConfigMap{
+	producer, err := ka.NewProducer(&ka.ConfigMap{
 		"bootstrap.servers": config.Kafka.BootstrapServers,
 	})
 	if err != nil {
@@ -71,8 +72,8 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 	}
 	for _, card := range cards {
 		message := fmt.Sprintf("%d", card.ID) // serialize message
-		err := k.producer.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: topicDeleteCard, Partition: kafka.PartitionAny},
+		err := k.producer.Produce(&ka.Message{
+			TopicPartition: ka.TopicPartition{Topic: &topicDeleteCard, Partition: ka.PartitionAny},
 			Value:          []byte(message),
 		}, nil)
 
@@ -87,7 +88,7 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 }
 
 func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
-	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
+	consumer, err := ka.NewConsumer(&ka.ConfigMap{
 		"bootstrap.servers": config.Kafka.BootstrapServers,
 		"group.id":          "card_delete_group",
 		"auto.offset.reset": "earliest",
@@ -126,10 +127,15 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) {
 	}()
 }
 
-func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *kafka.Message) (int64, error) {
+func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *ka.Message) (int64, error) {
 	k.logger.Info("Producer started")
-	cardID := int64(msg.Value)
-	k.logger.Info("Received message to delete card ID: %s\n", cardID)
+	msgString := string(msg.Value)
+	cardID, err := strconv.ParseInt(msgString, 10, 64)
+	if err != nil {
+		k.logger.Error("Error parsing cardID from kafka.Message", "error", err)
+		return 0, err
+	}
+	k.logger.Info("Received message to delete card ID", "card ID", msgString)
 	tx := k.cardRepo.BeginTransaction()
 	deletedID, err := k.cardRepo.DeleteCardID(tx, ctx, cardID)
 	defer func() {

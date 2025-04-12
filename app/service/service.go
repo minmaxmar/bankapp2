@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	banks_repo "bankapp2/app/repo/banks"
+	kafka "bankapp2/app/repo/kafkaa"
 	users_repo "bankapp2/app/repo/users"
 	"context"
 )
@@ -18,7 +19,7 @@ type service struct {
 	bankRepo banks_repo.BanksRepo
 	cardRepo cards_repo.CardsRepo
 
-	// kafka kafka.Kafka
+	kafka kafka.Kafka
 }
 
 type Service interface {
@@ -45,13 +46,13 @@ func New(
 	userRepo users_repo.UsersRepo,
 	cardRepo cards_repo.CardsRepo,
 	bankRepo banks_repo.BanksRepo,
-	// kafka kafka.Kafka
+	kafka kafka.Kafka,
 ) Service {
 	return &service{
 		logger:   logger,
 		userRepo: userRepo,
 		cardRepo: cardRepo,
 		bankRepo: bankRepo,
-		// kafka:    kafka,
+		kafka:    kafka,
 	}
 }

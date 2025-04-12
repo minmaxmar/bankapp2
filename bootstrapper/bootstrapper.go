@@ -4,9 +4,12 @@ import (
 	controller "bankapp2/app/controllers"
 	"bankapp2/app/handlers"
 	cards_repo "bankapp2/app/repo/cards"
+	kafka "bankapp2/app/repo/kafkaa"
 	"bankapp2/helper/config"
 	"bankapp2/helper/database"
 	logger "bankapp2/helper/logger"
+	"fmt"
+	"time"
 
 	banks_repo "bankapp2/app/repo/banks"
 	users_repo "bankapp2/app/repo/users"
@@ -19,6 +22,7 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-playground/validator/v10"
+	"github.com/robfig/cron/v3"
 )
 
 type RootBootstrapper struct {
@@ -33,8 +37,8 @@ type RootBootstrapper struct {
 	UserRepository users_repo.UsersRepo
 	CardRepository cards_repo.CardsRepo
 	BankRepository banks_repo.BanksRepo
-	// Kafka          kafka.Kafka
-	Service service.Service
+	Kafka          kafka.Kafka
+	Service        service.Service
 
 	Validator *validator.Validate
 }
@@ -62,8 +66,8 @@ func (r *RootBootstrapper) RunAPI() error {
 		log.Fatal("cant start server")
 	}
 
-	<-ctx.Done()
-	log.Println("Exited cleanly.")
+	// <-ctx.Done()
+	// log.Println("Exited cleanly.")
 
 	return nil
 }
@@ -75,34 +79,37 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	r.CardRepository = cards_repo.NewCardRepo(r.Infrastructure.DB, logger)
 	r.BankRepository = banks_repo.NewBanksRepo(r.Infrastructure.DB, logger)
 
-	//consumer - cron, producer - goroutine with ticker
-	// r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
+	// consumer - cron, producer - goroutine with ticker
+	r.Kafka = kafka.NewConn(r.CardRepository, *r.Config, logger)
 
-	// c := cron.New()
-	// _, err := c.AddFunc("@every 2m", func() {
-	// 	r.Kafka.NewConsumer(ctx, *r.Config)
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// c.Start()
-	// defer c.Stop()
+	c := cron.New()
+	_, err := c.AddFunc("@every 2m", func() {
+		r.Kafka.NewConsumer(ctx, *r.Config)
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
+	c.Start()
+	// TODO
+	// TODO
+	// defer c.Stop() ?? this stops cron as registerRepositoriesAndServices exist, may we go without it in this use case?
 
-	// ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(1 * time.Minute)
 	// defer ticker.Stop()
-
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case <-ticker.C:
-	// 			r.Kafka.ProduceDeleteExpiredCards(ctx)
-	// 		case <-ctx.Done():
-	// 			log.Println("Shutting down ProduceDeleteExpiredCards goroutine.")
-	// 			return
-	// 		}
-	// 	}
-	// }()
-	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository) //  r.Kafka
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				log.Println("ticker")
+				r.Kafka.ProduceDeleteExpiredCards(ctx)
+			case <-ctx.Done():
+				log.Println("Shutting down ProduceDeleteExpiredCards goroutine.")
+				return
+			}
+		}
+	}()
+	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository, r.Kafka)
 
 }
 

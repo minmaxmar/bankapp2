@@ -63,6 +63,16 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
     depends_on:
       - zookeeper
+    # volumes:
+    #   - C:\Users\79170\gopets\bankapp2\create-topics.sh:/create-topics.sh
+    # command: ["/bin/bash", "-c", "/create-topics.sh"]
+  
+  create_topic:
+    image: wurstmeister/kafka:latest
+    depends_on:
+      - kafka
+    entrypoint: >
+      bash -c "kafka-topics.sh --create --topic delete_card --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 --if-not-exists"
 
 
 

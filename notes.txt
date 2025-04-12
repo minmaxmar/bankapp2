@@ -31,7 +31,7 @@ CREATE DATABASE bankapp2;
 
 kafka-topics.sh --create --topic delete_card --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 kafka-topics.sh --list --bootstrap-server localhost:9092
-
+kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic delete_card --from-beginning
 
 /////////////////////////////
 
@@ -64,3 +64,21 @@ done
 
 # Create the topic
 kafka-topics.sh --create --topic my_new_topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 --if-not-exists
+
+
+
+https://github.com/confluentinc/confluent-kafka-go/issues/889
+Thanks your reply, this work for me. I installed "MSYS2 MinGW GCC" in windows11, which could be download from "https://www.msys2.org/", and open a terminal of msys2, then run all commands below in this terminal:
+$ pacman -Syu
+$ pacman -S base-devel
+$ pacman -S mingw-w64-x86_64-toolchain
+$ pacman -Q -e
+$ pacman -S mingw-w64-ucrt-x86_64-gcc
+finally, I add the "D:\Program Files\msys64\mingw64\bin" into system env PATH (“D:\Program Files\msys64” is my installation dirctory of msys64)
+
+
+
+
+SELECT * FROM cards WHERE expire_date < '2025-04-12';
+SELECT * FROM cards WHERE expire_date < '2029-04-12';
+SELECT * FROM "cards" WHERE expire_date < '2029-04-12T12:00:34.365Z';
