@@ -5,23 +5,23 @@ import (
 	"bankapp2/helper/config"
 	"context"
 	"strconv"
+	"time"
 
 	"log/slog"
 
 	"github.com/go-stack/stack"
+	"github.com/robfig/cron"
 	"gorm.io/gorm"
 
 	"github.com/IBM/sarama"
 )
 
-var (
-	topicDeleteCard string = "delete_card"
-)
-
 type kafkaProducer struct {
-	logger   *slog.Logger
-	producer sarama.SyncProducer
-	cardRepo cardRepo
+	logger           *slog.Logger
+	producer         sarama.SyncProducer
+	cardRepo         cardRepo
+	bootstrapServers string
+	topic            string
 }
 
 type cardRepo interface {
@@ -36,8 +36,10 @@ type cardRepo interface {
 type Kafka interface {
 	// ProduceDeleteCard(ctx context.Context, id int) error
 	ProduceDeleteExpiredCards(ctx context.Context) error
-	NewConsumer(ctx context.Context, config config.Config) error
+	NewConsumer(ctx context.Context) error
 	ConsumeCardDelete(ctx context.Context, msg *sarama.ConsumerMessage) (int64, error)
+	ScheduleProducer(ctx context.Context) error
+	ScheduleConsumer(ctx context.Context) error
 }
 
 func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) (Kafka, error) {
@@ -53,10 +55,51 @@ func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) (Kafk
 
 	logger.Info("New Kafka connection opened")
 	return &kafkaProducer{
-		logger:   logger,
-		producer: producer,
-		cardRepo: cardRepo,
+		logger:           logger,
+		producer:         producer,
+		cardRepo:         cardRepo,
+		bootstrapServers: config.Kafka.BootstrapServers,
+		topic:            config.Kafka.ExpiredCardsTopic,
 	}, nil
+}
+
+func (k *kafkaProducer) ScheduleConsumer(ctx context.Context) error {
+	ticker := time.NewTicker(1 * time.Minute)
+	// TODO
+	// TODO
+	// defer ticker.Stop() ??
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				k.logger.Info("Next tick")
+				k.ProduceDeleteExpiredCards(ctx)
+			case <-ctx.Done():
+				k.logger.Info("Shutting down ProduceDeleteExpiredCards goroutine.")
+				return
+			}
+		}
+	}()
+}
+
+func (k *kafkaProducer) ScheduleProducer(ctx context.Context) error {
+	// TODO: is this error-catch OK????
+	c := cron.New()
+	_, err := c.AddFunc("@every 2m", func() {
+		if err := k.NewConsumer(ctx); err != nil {
+			k.logger.Error("Error in NewConsumer", "error", err)
+			return
+		}
+	})
+	if err != nil {
+		return err
+	}
+	// c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
+	c.Start()
+	// TODO
+	// TODO
+	// defer c.Stop() ?? this stops cron as registerRepositoriesAndServices exist, may we go without it in this use case?
+	return nil
 }
 
 func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
@@ -71,7 +114,7 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 	for _, card := range cards {
 		message := strconv.Itoa(int(card.ID)) // serialize message
 		_, _, err := k.producer.SendMessage(&sarama.ProducerMessage{
-			Topic: topicDeleteCard,
+			Topic: k.topic,
 			Value: sarama.StringEncoder(message),
 		})
 		k.logger.Info("Sent mes to kafka card ID", "cardID", message)
@@ -85,8 +128,8 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 
 // TODO: !!! all consumers created get no closed after NewConsumer exists!!!!
 // TODO: !!! better to create 1 consumer like producer sarama.SyncProducer ???
-func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) error {
-	consumer, err := sarama.NewConsumer([]string{config.Kafka.BootstrapServers}, nil)
+func (k *kafkaProducer) NewConsumer(ctx context.Context) error {
+	consumer, err := sarama.NewConsumer([]string{k.bootstrapServers}, nil)
 	if err != nil {
 		k.logger.Error("Unable to create Kafka consumer",
 			"error", err,
@@ -96,17 +139,17 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context, config config.Config) e
 	defer consumer.Close()
 	k.logger.Info("Consumer started")
 
-	partitions, err := consumer.Partitions(topicDeleteCard)
+	partitions, err := consumer.Partitions(k.topic)
 	if err != nil {
 		k.logger.Error("Failed to fetch partitions",
-			"topic", topicDeleteCard,
+			"topic", k.topic,
 			"error", err,
 			"stacktrace", stack.Trace().String())
 		return err
 	}
 
 	for _, partition := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition(topicDeleteCard, partition, sarama.OffsetNewest)
+		partitionConsumer, err := consumer.ConsumePartition(k.topic, partition, sarama.OffsetNewest)
 
 		if err != nil {
 			k.logger.Error("Failed to start partition consumer",

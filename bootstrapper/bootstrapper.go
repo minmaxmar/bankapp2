@@ -8,8 +8,6 @@ import (
 	"bankapp2/helper/config"
 	"bankapp2/helper/database"
 	logger "bankapp2/helper/logger"
-	"fmt"
-	"time"
 
 	banks_repo "bankapp2/app/repo/banks"
 	users_repo "bankapp2/app/repo/users"
@@ -22,7 +20,6 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-playground/validator/v10"
-	"github.com/robfig/cron/v3"
 )
 
 type RootBootstrapper struct {
@@ -86,38 +83,14 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	}
 	r.Kafka = kp
 
-	// TODO: is this error-catch OK????
-	c := cron.New()
-	_, er := c.AddFunc("@every 2m", func() {
-		if err := r.Kafka.NewConsumer(ctx, *r.Config); err != nil {
-			log.Fatal(err)
-		}
-	})
-	if er != nil {
-		log.Fatal(er)
+	if err := r.Kafka.ScheduleProducer(ctx); err != nil {
+		log.Fatal(err)
 	}
-	c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
-	c.Start()
-	// TODO
-	// TODO
-	// defer c.Stop() ?? this stops cron as registerRepositoriesAndServices exist, may we go without it in this use case?
 
-	ticker := time.NewTicker(1 * time.Minute)
-	// defer ticker.Stop()
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				log.Println("ticker")
-				r.Kafka.ProduceDeleteExpiredCards(ctx)
-			case <-ctx.Done():
-				log.Println("Shutting down ProduceDeleteExpiredCards goroutine.")
-				return
-			}
-		}
-	}()
+	if err := r.Kafka.ScheduleConsumer(ctx); err != nil {
+		log.Fatal(err)
+	}
 	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository, r.Kafka)
-
 }
 
 func (r *RootBootstrapper) registerAPIServer(cfg config.Config) error {

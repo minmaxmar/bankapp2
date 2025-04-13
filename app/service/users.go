@@ -27,13 +27,7 @@ func (s service) PostUser(ctx context.Context, userdData models.NewUser) (models
 		return models.User{}, err
 	}
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return userReturn, nil
 }
@@ -43,13 +37,7 @@ func (s service) DeleteUserID(ctx context.Context, id int64) error {
 	// return s.rabbitMQ.ProduceDeleteCard(ctx, id)
 	_, err := s.userRepo.DeleteUserID(tx, ctx, id) // rowsAffected
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return err
 }

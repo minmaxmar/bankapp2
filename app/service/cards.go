@@ -47,13 +47,7 @@ func (s service) PostCard(ctx context.Context, cardData models.NewCard) (models.
 		return models.Card{}, err
 	}
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return cardReturn, nil
 }
@@ -63,13 +57,7 @@ func (s service) DeleteCardID(ctx context.Context, id int64) error {
 	// return s.rabbitMQ.ProduceDeleteCard(ctx, id)
 	_, err := s.cardRepo.DeleteCardID(tx, ctx, id) // rowsAffected
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return err
 }

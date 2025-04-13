@@ -10,6 +10,8 @@ import (
 	kafka "bankapp2/app/repo/kafkaa"
 	users_repo "bankapp2/app/repo/users"
 	"context"
+
+	"gorm.io/gorm"
 )
 
 type service struct {
@@ -39,6 +41,7 @@ type Service interface {
 	PostBank(ctx context.Context, user models.NewBank) (models.Bank, error)
 	DeleteBankID(ctx context.Context, id int64) error
 	GetBanks(ctx context.Context) ([]*models.Bank, error)
+	RollbackOrCommit(tx *gorm.DB, err error)
 }
 
 func New(
@@ -54,5 +57,13 @@ func New(
 		cardRepo: cardRepo,
 		bankRepo: bankRepo,
 		kafka:    kafka,
+	}
+}
+
+func (s service) RollbackOrCommit(tx *gorm.DB, err error) {
+	if err != nil {
+		tx.Rollback()
+	} else {
+		tx.Commit()
 	}
 }

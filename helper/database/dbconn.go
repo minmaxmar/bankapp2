@@ -13,6 +13,8 @@ import (
 	"log/slog"
 )
 
+const dsnFormat = "host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC"
+
 type DB interface {
 	NewConn(config config.Config, logger *slog.Logger) DB
 	GetConn() *gorm.DB
@@ -33,7 +35,7 @@ func NewDB() DB {
 func (d *db) NewConn(config config.Config, slogger *slog.Logger) DB {
 
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		dsnFormat,
 		config.Database.Host,
 		config.Database.User,
 		config.Database.Password,
@@ -51,8 +53,6 @@ func (d *db) NewConn(config config.Config, slogger *slog.Logger) DB {
 
 	log.Info().Msg("connected")
 	conn.Logger = logger.Default.LogMode(logger.Info)
-
-	//TODO : migrations here?
 
 	return &db{
 		logger: slogger,

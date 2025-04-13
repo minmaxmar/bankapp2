@@ -22,7 +22,8 @@ type Database struct {
 }
 
 type Kafka struct {
-	BootstrapServers string `envconfig:"bootstrapservers" required:"true"`
+	BootstrapServers  string `envconfig:"bootstrapservers" required:"true"`
+	ExpiredCardsTopic string `envconfig:"expiredcardstopic" required:"true"`
 }
 
 func LoadConfig() *Config {

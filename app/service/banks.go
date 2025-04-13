@@ -24,13 +24,7 @@ func (s service) PostBank(ctx context.Context, bankData models.NewBank) (models.
 		return models.Bank{}, err
 	}
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return bankReturn, nil
 }
@@ -40,13 +34,7 @@ func (s service) DeleteBankID(ctx context.Context, id int64) error {
 	// return s.rabbitMQ.ProduceDeleteCard(ctx, id)
 	_, err := s.bankRepo.DeleteBankID(tx, ctx, id) // rowsAffected
 
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer s.RollbackOrCommit(tx, err)
 
 	return err
 }
