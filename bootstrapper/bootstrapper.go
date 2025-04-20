@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-playground/validator/v10"
+	"github.com/robfig/cron"
 )
 
 type RootBootstrapper struct {
@@ -43,7 +44,9 @@ type RootBootstrapper struct {
 type RootBoot interface {
 	registerRepositoriesAndServices(ctx context.Context, db database.DB)
 	registerAPIServer(cfg config.Config) error
-	RunAPI() error
+	RunAPI(ctx context.Context) error
+	RunCron(ctx context.Context, c *cron.Cron) error
+	StopKafka()
 }
 
 func New() RootBoot {
@@ -52,9 +55,31 @@ func New() RootBoot {
 	}
 }
 
-func (r *RootBootstrapper) RunAPI() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (r *RootBootstrapper) RunCron(ctx context.Context, c *cron.Cron) error {
+	// TODO: is this error-catch OK????
+	err := c.AddFunc("@every 2m", func() {
+		errChan := r.Kafka.ProcessConsumer(ctx)
+		for err := range errChan {
+			log.Fatal("Error from goroutine in ProcessConsumer:", err)
+			return
+		}
+	})
+	if err != nil {
+		return err
+	}
+	// c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
+	c.Start()
+
+	return nil
+}
+
+func (r *RootBootstrapper) StopKafka() {
+	r.Kafka.StopKafka()
+}
+
+func (r *RootBootstrapper) RunAPI(ctx context.Context) error {
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
 	r.Infrastructure.Logger = logger.NewLogger()
 
 	r.registerRepositoriesAndServices(ctx, r.Infrastructure.DB)
@@ -83,13 +108,13 @@ func (r *RootBootstrapper) registerRepositoriesAndServices(ctx context.Context, 
 	}
 	r.Kafka = kp
 
-	if err := r.Kafka.ScheduleProducer(ctx); err != nil {
-		log.Fatal(err)
-	}
+	errChan := r.Kafka.ScheduleProducer(ctx)
+	go func() {
+		for err := range errChan {
+			log.Fatal("Error from goroutine in ScheduleProducer:", err)
+		}
+	}()
 
-	if err := r.Kafka.ScheduleConsumer(ctx); err != nil {
-		log.Fatal(err)
-	}
 	r.Service = service.New(logger, r.UserRepository, r.CardRepository, r.BankRepository, r.Kafka)
 }
 

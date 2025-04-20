@@ -18,7 +18,7 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/robfig/cron/v3 v3.0.1
+	github.com/robfig/cron v1.2.0
 	github.com/rs/zerolog v1.33.0
 	golang.org/x/net v0.37.0
 	gorm.io/driver/postgres v1.5.11

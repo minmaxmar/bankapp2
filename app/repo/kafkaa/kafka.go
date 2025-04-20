@@ -10,15 +10,15 @@ import (
 	"log/slog"
 
 	"github.com/go-stack/stack"
-	"github.com/robfig/cron"
 	"gorm.io/gorm"
 
 	"github.com/IBM/sarama"
 )
 
-type kafkaProducer struct {
+type kafkaImpl struct {
 	logger           *slog.Logger
 	producer         sarama.SyncProducer
+	consumer         sarama.Consumer
 	cardRepo         cardRepo
 	bootstrapServers string
 	topic            string
@@ -36,10 +36,10 @@ type cardRepo interface {
 type Kafka interface {
 	// ProduceDeleteCard(ctx context.Context, id int) error
 	ProduceDeleteExpiredCards(ctx context.Context) error
-	NewConsumer(ctx context.Context) error
+	ProcessConsumer(ctx context.Context) chan error
 	ConsumeCardDelete(ctx context.Context, msg *sarama.ConsumerMessage) (int64, error)
-	ScheduleProducer(ctx context.Context) error
-	ScheduleConsumer(ctx context.Context) error
+	ScheduleProducer(ctx context.Context) chan error
+	StopKafka()
 }
 
 func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) (Kafka, error) {
@@ -50,59 +50,63 @@ func NewConn(cardRepo cardRepo, config config.Config, logger *slog.Logger) (Kafk
 		logger.Error("Unable to create Kafka producer",
 			"error", err,
 			"stacktrace", stack.Trace().String())
-		return &kafkaProducer{}, err
+		return &kafkaImpl{}, err
 	}
+	// TODO: to boostrap
+	// producer.Close()
+
+	consumer, err := sarama.NewConsumer([]string{config.Kafka.BootstrapServers}, nil)
+	if err != nil {
+		logger.Error("Unable to create Kafka consumer",
+			"error", err,
+			"stacktrace", stack.Trace().String())
+		return &kafkaImpl{}, err
+	}
+	// TODO: to boostrap
+	// defer consumer.Close()
+	logger.Info("Consumer started")
 
 	logger.Info("New Kafka connection opened")
-	return &kafkaProducer{
+	return &kafkaImpl{
 		logger:           logger,
 		producer:         producer,
+		consumer:         consumer,
 		cardRepo:         cardRepo,
 		bootstrapServers: config.Kafka.BootstrapServers,
 		topic:            config.Kafka.ExpiredCardsTopic,
 	}, nil
 }
 
-func (k *kafkaProducer) ScheduleConsumer(ctx context.Context) error {
+func (k *kafkaImpl) StopKafka() {
+	k.consumer.Close()
+	k.producer.Close()
+}
+
+func (k *kafkaImpl) ScheduleProducer(ctx context.Context) chan error {
 	ticker := time.NewTicker(1 * time.Minute)
-	// TODO
-	// TODO
-	// defer ticker.Stop() ??
+	errChan := make(chan error)
 	go func() {
+		defer ticker.Stop()
+		defer close(errChan)
 		for {
 			select {
 			case <-ticker.C:
 				k.logger.Info("Next tick")
-				k.ProduceDeleteExpiredCards(ctx)
+				if err := k.ProduceDeleteExpiredCards(ctx); err != nil {
+					errChan <- err
+					return
+				}
 			case <-ctx.Done():
 				k.logger.Info("Shutting down ProduceDeleteExpiredCards goroutine.")
 				return
 			}
 		}
 	}()
+
+	return errChan
 }
 
-func (k *kafkaProducer) ScheduleProducer(ctx context.Context) error {
-	// TODO: is this error-catch OK????
-	c := cron.New()
-	_, err := c.AddFunc("@every 2m", func() {
-		if err := k.NewConsumer(ctx); err != nil {
-			k.logger.Error("Error in NewConsumer", "error", err)
-			return
-		}
-	})
-	if err != nil {
-		return err
-	}
-	// c.AddFunc("@every 1m", func() { fmt.Println("Every 1m") })
-	c.Start()
-	// TODO
-	// TODO
-	// defer c.Stop() ?? this stops cron as registerRepositoriesAndServices exist, may we go without it in this use case?
-	return nil
-}
-
-func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
+func (k *kafkaImpl) ProduceDeleteExpiredCards(ctx context.Context) error {
 	cards, err := k.cardRepo.GetExpiredCards(k.cardRepo.GetConn(), ctx)
 	k.logger.Info("Got exp. cards", "cards", cards)
 	if err != nil {
@@ -127,29 +131,20 @@ func (k *kafkaProducer) ProduceDeleteExpiredCards(ctx context.Context) error {
 }
 
 // TODO: !!! all consumers created get no closed after NewConsumer exists!!!!
-// TODO: !!! better to create 1 consumer like producer sarama.SyncProducer ???
-func (k *kafkaProducer) NewConsumer(ctx context.Context) error {
-	consumer, err := sarama.NewConsumer([]string{k.bootstrapServers}, nil)
-	if err != nil {
-		k.logger.Error("Unable to create Kafka consumer",
-			"error", err,
-			"stacktrace", stack.Trace().String())
-		return err
-	}
-	defer consumer.Close()
-	k.logger.Info("Consumer started")
-
-	partitions, err := consumer.Partitions(k.topic)
+func (k *kafkaImpl) ProcessConsumer(ctx context.Context) chan error {
+	errChan := make(chan error)
+	partitions, err := k.consumer.Partitions(k.topic)
 	if err != nil {
 		k.logger.Error("Failed to fetch partitions",
 			"topic", k.topic,
 			"error", err,
 			"stacktrace", stack.Trace().String())
-		return err
+		errChan <- err
+		return errChan
 	}
 
 	for _, partition := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition(k.topic, partition, sarama.OffsetNewest)
+		partitionConsumer, err := k.consumer.ConsumePartition(k.topic, partition, sarama.OffsetNewest)
 
 		if err != nil {
 			k.logger.Error("Failed to start partition consumer",
@@ -159,21 +154,23 @@ func (k *kafkaProducer) NewConsumer(ctx context.Context) error {
 			continue
 		}
 
-		// go func(pc sarama.PartitionConsumer) {
-		defer partitionConsumer.Close()
-		for msg := range partitionConsumer.Messages() {
-			if deletedID, err := k.ConsumeCardDelete(ctx, msg); err != nil {
-				k.logger.Error("Error while trying to delete", "cardID", msg.Value, "error", err)
-				return err
-			} else {
-				k.logger.Info("Successfully deleted card ID", "deletedID", deletedID)
+		go func(pc sarama.PartitionConsumer) {
+			defer partitionConsumer.Close()
+			for msg := range partitionConsumer.Messages() {
+				if deletedID, err := k.ConsumeCardDelete(ctx, msg); err != nil {
+					k.logger.Error("Error while trying to delete", "cardID", msg.Value, "error", err)
+					errChan <- err
+					return
+				} else {
+					k.logger.Info("Successfully deleted card ID", "deletedID", deletedID)
+				}
 			}
-		}
-		// }(partitionConsumer)
+		}(partitionConsumer)
 	}
+	return errChan
 }
 
-func (k *kafkaProducer) ConsumeCardDelete(ctx context.Context, msg *sarama.ConsumerMessage) (int64, error) {
+func (k *kafkaImpl) ConsumeCardDelete(ctx context.Context, msg *sarama.ConsumerMessage) (int64, error) {
 	msgString := string(msg.Value)
 	cardID, err := strconv.ParseInt(msgString, 10, 64)
 	if err != nil {
